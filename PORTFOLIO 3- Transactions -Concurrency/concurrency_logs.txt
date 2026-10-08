@@ -1,0 +1,142 @@
+SCENARIO: PESSIMISTIC LOCKING & CONCURRENCY CONTROL SIMULATION (LOST UPDATE MITIGATION)
+
+
+CONNECTION 1 (SESSION ID: 48) - EXCLUSIVE ROW LOCK ACQUISITION
+
+mysql> -- Connection 1: Open explicit transaction and disable autocommit
+mysql> SET autocommit = 0;
+Query OK, 0 rows affected (0.00 sec)
+
+mysql> START TRANSACTION;
+Query OK, 0 rows affected (0.00 sec)
+
+mysql> -- Connection 1 selects target SKU and asserts Exclusive Row-Level Lock (X-Lock)
+mysql> SELECT collection_id, Product_name, Product_color, Product_size, Launch_date 
+    -> FROM Products_dets 
+    -> WHERE collection_id = 'S020' 
+    -> FOR UPDATE;
++---------------+--------------+---------------+--------------+-------------+
+| collection_id | Product_name | Product_color | Product_size | Launch_date |
++---------------+--------------+---------------+--------------+-------------+
+| S020          | Sweatshirt   | Green         | XXL          | 1990-02-14  |
++---------------+--------------+---------------+--------------+-------------+
+1 row in set (0.00 sec)
+
+mysql> -- Connection 1 records batch sales reservation for 10 units
+mysql> INSERT INTO sales (collection_id, Quantity_sold, Price_each, Order_date)
+    -> VALUES ('S020', 10, 5000, '2026-10-10');
+Query OK, 1 row affected (0.00 sec)
+
+mysql> -- TRANSACTION HELD OPEN (No COMMIT issued yet. Lock retained on row 'S020')
+
+
+CONNECTION 2 (SESSION ID: 52) - CONCURRENT ACCESS ATTEMPT & LOCK WAIT BLOCK
+
+mysql> -- Connection 2: Attempt concurrent access on identical tuple
+mysql> SET autocommit = 0;
+Query OK, 0 rows affected (0.00 sec)
+
+mysql> START TRANSACTION;
+Query OK, 0 rows affected (0.00 sec)
+
+mysql> -- Connection 2 requests exclusive lock on the same collection_id 'S020'
+mysql> SELECT collection_id, Product_name, Product_color, Product_size 
+    -> FROM Products_dets 
+    -> WHERE collection_id = 'S020' 
+    -> FOR UPDATE;
+
+-- [DIAGNOSTIC STATUS]: EXECUTION SUSPENDED.
+-- Connection 2 enters 'LOCK WAIT' state.
+-- Session 52 is blocked by Session 48 waiting on record lock in table `Products_dets`.
+
+
+CONNECTION 3 (SESSION ID: 55) - ENGINE DIAGNOSTICS & LOCK CONTENTION MONITORING
+
+mysql> -- Querying Performance Schema for lock wait details
+mysql> SELECT 
+    ->     r.trx_id waiting_trx_id,
+    ->     r.trx_mysql_thread_id waiting_thread,
+    ->     r.trx_query waiting_query,
+    ->     b.trx_id blocking_trx_id,
+    ->     b.trx_mysql_thread_id blocking_thread,
+    ->     b.trx_query blocking_query
+    -> FROM performance_schema.data_lock_waits w
+    -> INNER JOIN information_schema.innodb_trx b 
+    ->     ON b.trx_id = w.blocking_engine_transaction_id
+    -> INNER JOIN information_schema.innodb_trx r 
+    ->     ON r.trx_id = w.requesting_engine_transaction_id\G
+*************************** 1. row ***************************
+ waiting_trx_id: 2841094
+ waiting_thread: 52
+  waiting_query: SELECT collection_id, Product_name, Product_color, Product_size FROM Products_dets WHERE collection_id = 'S020' FOR UPDATE
+blocking_trx_id: 2841091
+blocking_thread: 48
+ blocking_query: NULL
+1 row in set (0.00 sec)
+
+mysql> -- Inspecting active locks held in InnoDB engine
+mysql> SELECT 
+    ->     ENGINE_TRANSACTION_ID,
+    ->     OBJECT_NAME,
+    ->     INDEX_NAME,
+    ->     LOCK_TYPE,
+    ->     LOCK_MODE,
+    ->     LOCK_STATUS,
+    ->     LOCK_DATA
+    -> FROM performance_schema.data_locks
+    -> WHERE OBJECT_NAME = 'Products_dets';
++-----------------------+---------------+------------+-----------+---------------+-------------+-----------+
+| ENGINE_TRANSACTION_ID | OBJECT_NAME   | INDEX_NAME | LOCK_TYPE | LOCK_MODE     | LOCK_STATUS | LOCK_DATA |
++-----------------------+---------------+------------+-----------+---------------+-------------+-----------+
+| 2841091               | Products_dets | NULL       | TABLE     | IX            | GRANTED     | NULL      |
+| 2841091               | Products_dets | PRIMARY    | RECORD    | X,REC_NOT_GAP | GRANTED     | 'S020'    |
+| 2841094               | Products_dets | NULL       | TABLE     | IX            | GRANTED     | NULL      |
+| 2841094               | Products_dets | PRIMARY    | RECORD    | X,REC_NOT_GAP | WAITING     | 'S020'    |
++-----------------------+---------------+------------+-----------+---------------+-------------+-----------+
+4 rows in set (0.00 sec)
+
+
+CONNECTION 1 (SESSION ID: 48) - COMMIT AND RELEASE
+
+mysql> -- Connection 1 commits transaction, flushing write-ahead logs and releasing lock
+mysql> COMMIT;
+Query OK, 0 rows affected (0.01 sec)
+
+
+CONNECTION 2 (SESSION ID: 52) - UNBLOCKING & SERIALISED EXECUTION COMPLETION
+
+-- [STATUS]: Lock acquired immediately following Connection 1 COMMIT.
++---------------+--------------+---------------+--------------+
+| collection_id | Product_name | Product_color | Product_size |
++---------------+--------------+---------------+--------------+
+| S020          | Sweatshirt   | Green         | XXL          |
++---------------+--------------+---------------+--------------+
+1 row in set (4.82 sec)   <-- Note: 4.82 seconds elapsed during lock wait
+
+mysql> -- Connection 2 performs secondary insertion safely without overwrite anomaly
+mysql> INSERT INTO sales (collection_id, Quantity_sold, Price_each, Order_date)
+    -> VALUES ('S020', 5, 5000, '2026-10-11');
+Query OK, 1 row affected (0.00 sec)
+
+mysql> COMMIT;
+Query OK, 0 rows affected (0.01 sec)
+
+
+FINAL AUDIT VERIFICATION: SERIALISED STATE CONSISTENCY
+
+mysql> -- Verify that both operations committed serially without data loss
+mysql> SELECT collection_id, Quantity_sold, Price_each, Order_date 
+    -> FROM sales 
+    -> WHERE collection_id = 'S020' 
+    -> ORDER BY Order_date DESC 
+    -> LIMIT 3;
++---------------+---------------+------------+------------+
+| collection_id | Quantity_sold | Price_each | Order_date |
++---------------+---------------+------------+------------+
+| S020          |             5 |       5000 | 2026-10-11 |
+| S020          |            10 |       5000 | 2026-10-10 |
+| S020          |            98 |       5000 | 2023-01-23 |
++---------------+---------------+------------+------------+
+3 rows in set (0.00 sec)
+
+
