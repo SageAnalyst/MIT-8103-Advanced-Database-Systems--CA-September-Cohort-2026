@@ -1,0 +1,248 @@
+[
+  {
+    "_id": "H020",
+    "product_name": "Custom Hoodie",
+    "product_color": "Green",
+    "product_size": "XXL",
+    "launch_date": { "$date": "1990-02-14T00:00:00Z" },
+    "category": "Streetwear Apparel",
+    "pricing": {
+      "base_price": 8600,
+      "currency": "NGN"
+    },
+    "sales_records": [
+      {
+        "order_date": { "$date": "2010-04-23T00:00:00Z" },
+        "quantity_sold": 98,
+        "price_each": 8600,
+        "line_total": 842800,
+        "channel": "Instagram",
+        "fulfillment": {
+          "order_address": "no4 akoka, uni rd",
+          "state": "Lagos",
+          "delivery_fee": 3500
+        }
+      },
+      {
+        "order_date": { "$date": "2010-01-14T00:00:00Z" },
+        "quantity_sold": 98,
+        "price_each": 8700,
+        "line_total": 852600,
+        "channel": "Instagram",
+        "fulfillment": {
+          "order_address": "no4 akoka, uni rd",
+          "state": "Lagos",
+          "delivery_fee": 3500
+        }
+      }
+    ],
+    "inventory_metrics": {
+      "total_units_sold": 196,
+      "stock_on_hand": 54,
+      "reorder_threshold": 20
+    },
+    "specifications": {
+      "fabric_composition": "100% Brushed Fleece Cotton",
+      "gsm": 420,
+      "pocket_style": "Kangaroo pouch",
+      "wash_care": ["Machine wash cold", "Tumble dry low", "Do not bleach"]
+    }
+  },
+  {
+    "_id": "S020",
+    "product_name": "Sweatshirt",
+    "product_color": "Green",
+    "product_size": "XXL",
+    "launch_date": { "$date": "1990-02-14T00:00:00Z" },
+    "category": "Streetwear Apparel",
+    "pricing": {
+      "base_price": 5000,
+      "currency": "NGN"
+    },
+    "sales_records": [
+      {
+        "order_date": { "$date": "2023-01-23T00:00:00Z" },
+        "quantity_sold": 98,
+        "price_each": 5000,
+        "line_total": 490000,
+        "channel": "whatsapp",
+        "fulfillment": {
+          "order_address": "no2 akoka, uni rd",
+          "state": "Lagos",
+          "delivery_fee": 3500
+        }
+      }
+    ],
+    "inventory_metrics": {
+      "total_units_sold": 98,
+      "stock_on_hand": 42,
+      "reorder_threshold": 15
+    },
+    "specifications": {
+      "fabric_composition": "French Terry Cotton",
+      "gsm": 380,
+      "collar_style": "Ribbed crewneck",
+      "wash_care": ["Wash with similar colours", "Do not iron print"]
+    }
+  },
+  {
+    "_id": "C020",
+    "product_name": "Cargopants",
+    "product_color": "Blue",
+    "product_size": "XL",
+    "launch_date": { "$date": "1989-05-18T00:00:00Z" },
+    "category": "Bottoms / Utility",
+    "pricing": {
+      "base_price": 7000,
+      "currency": "NGN"
+    },
+    "sales_records": [
+      {
+        "order_date": { "$date": "2020-05-10T00:00:00Z" },
+        "quantity_sold": 15,
+        "price_each": 7000,
+        "line_total": 105000,
+        "channel": "Website",
+        "fulfillment": {
+          "order_address": "Signature Villa, Ikota Villa Gra",
+          "state": "Lagos",
+          "delivery_fee": 7000
+        }
+      }
+    ],
+    "inventory_metrics": {
+      "total_units_sold": 15,
+      "stock_on_hand": 35,
+      "reorder_threshold": 10
+    },
+    "specifications": {
+      "fabric_composition": "Ripstop Cotton Twill",
+      "pocket_count": 6,
+      "closure_type": "YKK Zip Fly with drawstring waist",
+      "wash_care": ["Machine wash at 30C", "Warm iron"]
+    }
+  },
+  {
+    "_id": "S013",
+    "product_name": "Sweatshirt",
+    "product_color": "Blue",
+    "product_size": "XL",
+    "launch_date": { "$date": "1990-02-21T00:00:00Z" },
+    "category": "Streetwear Apparel",
+    "pricing": {
+      "base_price": 5000,
+      "currency": "NGN"
+    },
+    "sales_records": [
+      {
+        "order_date": { "$date": "2019-11-18T00:00:00Z" },
+        "quantity_sold": 20,
+        "price_each": 5000,
+        "line_total": 100000,
+        "channel": "whatsapp",
+        "fulfillment": {
+          "order_address": "Sango Ota Rd",
+          "state": "Ogun",
+          "delivery_fee": 1500
+        }
+      }
+    ],
+    "inventory_metrics": {
+      "total_units_sold": 20,
+      "stock_on_hand": 50,
+      "reorder_threshold": 12
+    },
+    "specifications": {
+      "fabric_composition": "French Terry Cotton",
+      "gsm": 380,
+      "collar_style": "Ribbed crewneck",
+      "wash_care": ["Machine wash cold"]
+    }
+  },
+  {
+    "_id": "H023",
+    "product_name": "Custom Hoodie",
+    "product_color": "Red",
+    "product_size": "XXL",
+    "launch_date": { "$date": "1990-02-14T00:00:00Z" },
+    "category": "Streetwear Apparel",
+    "pricing": {
+      "base_price": 10000,
+      "currency": "NGN"
+    },
+    "sales_records": [
+      {
+        "order_date": { "$date": "2010-07-03T00:00:00Z" },
+        "quantity_sold": 35,
+        "price_each": 1200,
+        "line_total": 42000,
+        "channel": "Website",
+        "fulfillment": {
+          "order_address": "no5 akoka, uni rd",
+          "state": "Lagos",
+          "delivery_fee": 3500
+        }
+      },
+      {
+        "order_date": { "$date": "2010-11-11T00:00:00Z" },
+        "quantity_sold": 35,
+        "price_each": 10000,
+        "line_total": 350000,
+        "channel": "Website",
+        "fulfillment": {
+          "order_address": "Bodija Rd",
+          "state": "Ibadan",
+          "delivery_fee": 3200
+        }
+      }
+    ],
+    "inventory_metrics": {
+      "total_units_sold": 70,
+      "stock_on_hand": 30,
+      "reorder_threshold": 10
+    },
+    "specifications": {
+      "fabric_composition": "100% Brushed Fleece Cotton",
+      "gsm": 420,
+      "pocket_style": "Kangaroo pouch",
+      "wash_care": ["Machine wash cold", "Tumble dry low"]
+    }
+  },
+  {
+    "_id": "C028",
+    "product_name": "Cargopants",
+    "product_color": "Indigo",
+    "product_size": "XXL",
+    "launch_date": { "$date": "1989-04-18T00:00:00Z" },
+    "category": "Bottoms / Utility",
+    "pricing": {
+      "base_price": 7000,
+      "currency": "NGN"
+    },
+    "sales_records": [
+      {
+        "order_date": { "$date": "2029-12-03T00:00:00Z" },
+        "quantity_sold": 1,
+        "price_each": 7000,
+        "line_total": 7000,
+        "channel": "Facebook",
+        "fulfillment": {
+          "order_address": "no3 akoka, uni rd",
+          "state": "Lagos",
+          "delivery_fee": 3500
+        }
+      }
+    ],
+    "inventory_metrics": {
+      "total_units_sold": 1,
+      "stock_on_hand": 19,
+      "reorder_threshold": 5
+    },
+    "specifications": {
+      "fabric_composition": "Heavyweight Denim / Duck Canvas",
+      "pocket_count": 8,
+      "closure_type": "Reinforced button fly",
+      "wash_care": ["Wash inside out", "Line dry"]
+    }
+  }
+]
