@@ -1,0 +1,133 @@
+﻿1. AWS RDS CLOUD REPLICATION & ENDPOINT CONFIGURATIONS
+
+
+
+
+[Primary Writer Instance (Multi-AZ Master - Lagos AZ-A)]
+Endpoint:        xoxho-db-primary.c7k3m9a8.af-south-1.rds.amazonaws.com
+Port:            3306
+Availability:    Multi-AZ (Synchronous Standby deployed in af-south-1b)
+Access Scope:    Strictly private VPC subnet (10.0.1.0/24); no public IP assigned
+Role:            ACID-compliant transactional writes, master inventory mutations,
+                 multi-statement order settlements.
+
+
+[Regional Read Replica 1 (Analytics Hub - Abuja AZ)]
+Endpoint:        xoxho-db-replica-abuja.c7k3m9a8.af-south-1.rds.amazonaws.com
+Port:            3306
+Replication:     Asynchronous binary log replication stream from Master
+Role:            Longitudinal historical queries, Tableau / PowerBI reporting,
+                 batch aggregation exports.
+
+
+[Regional Read Replica 2 (Storefront Edge - Lagos AZ-B)]
+Endpoint:        xoxho-db-replica-lagos.c7k3m9a8.af-south-1.rds.amazonaws.com
+Port:            3306
+Replication:     Asynchronous binary log replication stream from Master
+Role:            Customer product catalog lookup, sizing inventory checks,
+                 outreach channel click verification.
+
+
+
+
+
+
+2. MYSQL ENGINE PARAMETER GROUP TUNING (my.cnf / RDS Parameter Group)
+
+
+
+
+# Binary logging configuration for cross-replica replication
+binlog_format                   = ROW
+binlog_row_image                = FULL
+expire_logs_days                = 7
+sync_binlog                     = 1        # Strict durability: flush to disk on every commit
+
+
+# InnoDB memory pool allocation and buffer sizing
+innodb_buffer_pool_size         = 8G       # Allocated ~70-80% of dedicated RAM on db.m6g.xlarge
+innodb_buffer_pool_instances   = 8
+innodb_log_file_size            = 1G       # Write-ahead redo log sizing
+innodb_flush_log_at_trx_commit  = 1        # Enforces ACID durability compliance on Master
+innodb_flush_method             = O_DIRECT
+
+
+# Concurrency and thread handling
+max_connections                 = 500
+wait_timeout                    = 28800
+interactive_timeout             = 28800
+lock_wait_timeout               = 50       # Fails deadlocked queries after 50 seconds
+innodb_lock_wait_timeout        = 10       # Drops blocked locks in pessimistic test scenarios
+
+
+# Read-Replica safety constraints
+read_only                       = 1        # Enabled exclusively on read replica nodes
+super_read_only                 = 1        # Enforces read-only behavior for administrative roles
+
+
+
+
+3. APPLICATION CONNECTION POOLING CONFIGURATION (HikariCP / Node.js Pool)
+
+
+[HikariCP Configuration (Java / Spring Boot Architecture)]
+dataSourceClassName                = com.mysql.cj.jdbc.MysqlDataSource
+dataSource.user                    = xoxho_app_user
+dataSource.password                = ${DB_CREDENTIALS_SECRET}
+dataSource.databaseName            = Product_mod
+
+
+# Primary Write Pool:
+dataSource.serverName              = xoxho-db-primary.c7k3m9a8.af-south-1.rds.amazonaws.com
+dataSource.portNumber              = 3306
+hikari.poolName                    = XoxhoMasterWritePool
+hikari.maximumPoolSize             = 25
+hikari.minimumIdle                 = 10
+hikari.idleTimeout                 = 300000     # 5 minutes
+hikari.connectionTimeout           = 20000      # 20 seconds maximum wait time
+hikari.maxLifetime                 = 1800000    # 30 minutes before recycling connection
+
+
+# Read Replica Cluster Pool:
+dataSource.serverName              = xoxho-db-replica-lagos.c7k3m9a8.af-south-1.rds.amazonaws.com
+hikari.poolName                    = XoxhoReadOnlyPool
+hikari.readOnly                    = true
+hikari.maximumPoolSize             = 50
+hikari.minimumIdle                 = 20
+hikari.connectionTimeout           = 10000      # 10 seconds timeout for fast failover
+
+
+
+
+4. DATABASE ACCESS ROUTING CONNECTION STRINGS (Environment Variables)
+
+
+# Transactional Primary Instance (Read/Write)
+DATABASE_MASTER_URL="mysql://xoxho_app_user:SecureKey2026!@xoxho-db-primary.c7k3m9a8.af-south-1.rds.amazonaws.com:3306/Product_mod?ssl-mode=REQUIRED&connectTimeout=5000"
+
+
+# Analytics Read Replica (Read-Only)
+DATABASE_REPLICA_URL="mysql://xoxho_bi_user:ReadAccess2026!@xoxho-db-replica-abuja.c7k3m9a8.af-south-1.rds.amazonaws.com:3306/Product_mod?ssl-mode=REQUIRED&readOnly=true"
+
+
+5. HIGH AVAILABILITY FAILOVER & HEALTH CHECK PROBES
+
+
+# AWS CloudWatch Alarm Metric Configuration
+MetricName:                      DatabaseConnections
+Namespace:                       AWS/RDS
+Threshold:                       450
+ComparisonOperator:              GreaterThanThreshold
+EvaluationPeriods:               2
+Period:                          60 seconds
+AlarmAction:                     arn:aws:sns:af-south-1:123456789012:Xoxho-DB-Alerts
+
+
+# Replication Lag Monitoring Metric
+MetricName:                      ReplicaLag
+Namespace:                       AWS/RDS
+Threshold:                       30 seconds
+ComparisonOperator:              GreaterThanThreshold
+EvaluationPeriods:               1
+Period:                          60 seconds
+AlarmAction:                     arn:aws:sns:af-south-1:123456789012:Xoxho-DB-Alerts
