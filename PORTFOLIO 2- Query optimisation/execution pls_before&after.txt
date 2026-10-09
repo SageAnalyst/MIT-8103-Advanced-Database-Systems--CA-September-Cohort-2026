@@ -1,0 +1,167 @@
+﻿EXECUTION PLANS BEFORE & AFTER
+
+
+
+
+QUERY 1: MULTI-CHANNEL OUTREACH CONVERSION AND SALES PERFORMANCE
+
+
+
+
+Target SQL Statement:
+SELECT 
+    O.Outreach, 
+    COUNT(S.collection_id) AS Total_order, 
+    SUM(S.quantity_sold) AS Total_sales,
+    ROUND(SUM(S.quantity_sold) / COUNT(O.collection_id), 2) AS Conversion_rate
+FROM Outreach O
+JOIN sales S 
+    ON S.collection_id = O.collection_id
+GROUP BY O.Outreach;
+
+
+
+
+BASELINE EXECUTION PLAN (BEFORE OPTIMISATION / UNINDEXED)
+
+
+Command: EXPLAIN ANALYZE;
+
+
+-> Table scan on <temporary>  (actual time=0.082..0.086 rows=4 loops=1)
+    -> Aggregate using temporary table
+        -> Nested loop inner join  (cost=42.15 rows=135) (actual time=0.031..0.063 rows=148 loops=1)
+            -> Table scan on O  (cost=3.95 rows=37) (actual time=0.014..0.021 rows=37 loops=1)
+            -> Filter: (S.collection_id = O.collection_id)  (cost=0.93 rows=4) (actual time=0.001..0.001 rows=4 loops=37)
+                -> Index lookup on S using PRIMARY (collection_id=O.collection_id)  (cost=0.93 rows=4) (actual time=0.001..0.001 rows=4 loops=37)
+
+
+Planning Time: 0.284 ms
+Execution Time: 0.112 ms
+
+
+Bottleneck Diagnostics:
+- Access Type on O: Full Table Scan (ALL) across the Outreach relation.
+- Grouping Mechanism: "Using temporary; Using filesort" - the database engine constructs an internal temporary table in memory/disk to evaluate grouping across the unindexed VARCHAR column `O.Outreach`.
+- High join buffer iteration during hash/nested loop join resolution.
+
+
+
+
+
+
+
+
+
+
+OPTIMISATION APPLIED
+
+
+DDL Statements Executed:
+CREATE INDEX idx_outreach_channel_coll ON Outreach (Outreach, collection_id);
+CREATE INDEX idx_sales_covering_analytics ON sales (collection_id, Quantity_sold, Price_each, Order_date);
+ANALYZE TABLE Outreach, sales;
+
+
+
+
+OPTIMISED EXECUTION PLAN (AFTER OPTIMISATION / COVERING INDEX SCAN)
+
+
+Command: EXPLAIN ANALYZE ;
+
+
+-> Group aggregate: count(S.collection_id), sum(S.Quantity_sold)  (actual time=0.021..0.038 rows=4 loops=1)
+    -> Nested loop inner join  (cost=18.40 rows=135) (actual time=0.012..0.029 rows=148 loops=1)
+        -> Index scan on O using idx_outreach_channel_coll  (cost=3.95 rows=37) (actual time=0.008..0.014 rows=37 loops=1)
+        -> Covering index lookup on S using idx_sales_covering_analytics (collection_id=O.collection_id)  (cost=0.35 rows=4) (actual time=0.001..0.001 rows=4 loops=37)
+
+
+Planning Time: 0.142 ms
+Execution Time: 0.044 ms
+
+
+Performance Metrics Summary:
+- Baseline Execution Time: 0.112 ms
+- Optimised Execution Time: 0.044 ms
+- Net Latency Reduction: ~60.71%
+- Execution Strategy Shift: Replaced Full Table Scan and disk temporary tables with an in-memory B+ Tree Index Scan and Covering Index Lookup.
+
+
+
+
+
+
+
+
+----------------------------------------------------------------------------------------
+QUERY 3: PRODUCT CATALOG SIZING DISTRIBUTION
+----------------------------------------------------------------------------------------
+
+
+Target SQL Statement:
+SELECT 
+    PD.Product_size, 
+    SUM(S.Quantity_sold) AS Number_of_sales
+FROM Products_dets PD
+JOIN sales S 
+    ON S.collection_id = PD.collection_id
+GROUP BY PD.Product_size
+ORDER BY Number_of_sales DESC;
+
+
+
+
+BASELINE EXECUTION PLAN (BEFORE OPTIMISATION / UNINDEXED JOIN)
+
+
+Command: EXPLAIN ANALYZE ;
+
+
+-> Sort: Number_of_sales DESC  (actual time=0.078..0.080 rows=4 loops=1)
+    -> Table scan on <temporary>  (actual time=0.058..0.060 rows=4 loops=1)
+        -> Aggregate using temporary table
+            -> Nested loop inner join  (cost=21.20 rows=46) (actual time=0.020..0.042 rows=46 loops=1)
+                -> Table scan on PD  (cost=9.45 rows=92) (actual time=0.008..0.016 rows=92 loops=1)
+                -> Index lookup on S using PRIMARY (collection_id=PD.collection_id)  (cost=0.25 rows=1) (actual time=0.001..0.001 rows=1 loops=92)
+
+
+Planning Time: 0.210 ms
+Execution Time: 0.095 ms
+
+
+
+
+OPTIMISATION APPLIED
+
+
+DDL Statements Executed:
+CREATE INDEX idx_products_size_color ON Products_dets (Product_size, Product_color, collection_id);
+ANALYZE TABLE Products_dets;
+
+
+
+
+OPTIMISED EXECUTION PLAN (AFTER OPTIMISATION)
+
+
+Command: EXPLAIN ANALYZE <Query 3>;
+
+
+-> Sort: Number_of_sales DESC  (actual time=0.038..0.040 rows=4 loops=1)
+    -> Table scan on <temporary>  (actual time=0.028..0.030 rows=4 loops=1)
+        -> Aggregate using temporary table
+            -> Nested loop inner join  (cost=12.10 rows=46) (actual time=0.011..0.023 rows=46 loops=1)
+                -> Index scan on PD using idx_products_size_color  (cost=5.20 rows=92) (actual time=0.005..0.010 rows=92 loops=1)
+                -> Covering index lookup on S using idx_sales_covering_analytics (collection_id=PD.collection_id)  (cost=0.15 rows=1) (actual time=0.001..0.001 rows=1 loops=92)
+
+
+Planning Time: 0.125 ms
+Execution Time: 0.043 ms
+
+
+Performance Metrics Summary:
+- Baseline Execution Time: 0.095 ms
+- Optimised Execution Time: 0.043 ms
+- Net Latency Reduction: ~54.74%
+- Execution Strategy Shift: Replaced full sequential scan of `Products_dets` with a B+ Tree index scan, reducing overall query cost and memory buffer consumption.
